@@ -1,0 +1,43 @@
+@import "tailwindcss";
+
+:root {
+  --charbon: #15191A;
+  --charbon-clair: #232B2A;
+  --zinc: #D7DED9;
+  --zinc-pale: #F2F5F1;
+  --vert-accent: #8CC63F;
+  --vert-clair: #A6DD5C;
+  --vert-ok: #5B9A2E;
+  --jaune-bas: #B8860B;
+  --rouge-non: #A33A2E;
+  --background: var(--zinc-pale);
+  --foreground: var(--charbon);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-charbon: var(--charbon);
+  --color-charbon-clair: var(--charbon-clair);
+  --color-zinc: var(--zinc);
+  --color-zinc-pale: var(--zinc-pale);
+  --color-vert-accent: var(--vert-accent);
+  --color-vert-clair: var(--vert-clair);
+  --color-vert-ok: var(--vert-ok);
+  --color-jaune-bas: var(--jaune-bas);
+  --color-rouge-non: var(--rouge-non);
+  --font-display: "Arial Narrow", "Helvetica Neue Condensed", Arial, sans-serif;
+  --font-sans: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+}
+
+h1, h2, h3, h4, .font-display {
+  font-family: var(--font-display);
+  font-weight: 700;
+}
+
