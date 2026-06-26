@@ -327,6 +327,30 @@ export default function AdminDashboard({
     return data.id;
   }
 
+  // --- Supprimer une catégorie ---
+  async function deleteCategory(categoryId: string) {
+    const res = await fetch(`/api/categories/${categoryId}`, { method: "DELETE" });
+    const data = await res.json();
+    if (!res.ok) {
+      showToast(data.error || "Erreur lors de la suppression de la catégorie");
+      return;
+    }
+    setCategories((prev) => prev.filter((c) => c.id !== categoryId));
+    showToast("Catégorie supprimée");
+  }
+
+  // --- Supprimer une unité ---
+  async function deleteUnit(unitId: string) {
+    const res = await fetch(`/api/units/${unitId}`, { method: "DELETE" });
+    const data = await res.json();
+    if (!res.ok) {
+      showToast(data.error || "Erreur lors de la suppression de l'unité");
+      return;
+    }
+    setUnits((prev) => prev.filter((u) => u.id !== unitId));
+    showToast("Unité supprimée");
+  }
+
   // --- Créer un produit ---
   async function createProduct(input: {
     name: string;
@@ -420,6 +444,13 @@ export default function AdminDashboard({
             />
           ))}
         </div>
+
+        <CategoryAndUnitManager
+          categories={categories}
+          units={units}
+          onDeleteCategory={deleteCategory}
+          onDeleteUnit={deleteUnit}
+        />
 
         <NewProductForm
           categories={categories}
@@ -683,6 +714,119 @@ function ProductAdminCard({
           >
             Ajouter couleur
           </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CategoryAndUnitManager({
+  categories,
+  units,
+  onDeleteCategory,
+  onDeleteUnit,
+}: {
+  categories: CategoryDTO[];
+  units: UnitDTO[];
+  onDeleteCategory: (categoryId: string) => void;
+  onDeleteUnit: (unitId: string) => void;
+}) {
+  const [pendingCat, setPendingCat] = useState<string | null>(null);
+  const [pendingUnit, setPendingUnit] = useState<string | null>(null);
+
+  return (
+    <div className="bg-white border border-black/10 p-5 mb-4">
+      <h3 className="font-display uppercase text-sm mb-1">
+        Gérer les catégories et unités
+      </h3>
+      <p className="text-xs text-gray-500 mb-4">
+        Supprime une catégorie ou une unité créée par erreur. Une catégorie ou unité
+        encore utilisée par un produit ne peut pas être supprimée.
+      </p>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+        <div>
+          <label className="block text-[11px] uppercase text-gray-500 font-bold mb-2">
+            Catégories
+          </label>
+          <div className="flex flex-col gap-1.5">
+            {categories.map((c) => (
+              <div
+                key={c.id}
+                className="flex items-center justify-between bg-zinc-pale border border-black/10 px-3 py-2"
+              >
+                <span className="text-sm">{c.label}</span>
+                {pendingCat === c.id ? (
+                  <div className="flex items-center gap-2 text-xs">
+                    <button
+                      onClick={() => {
+                        onDeleteCategory(c.id);
+                        setPendingCat(null);
+                      }}
+                      className="bg-rouge-non text-white px-2.5 py-1 uppercase"
+                    >
+                      Confirmer
+                    </button>
+                    <button
+                      onClick={() => setPendingCat(null)}
+                      className="border border-black/10 px-2.5 py-1 uppercase"
+                    >
+                      Annuler
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setPendingCat(c.id)}
+                    className="text-xs uppercase text-rouge-non"
+                  >
+                    Supprimer
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-[11px] uppercase text-gray-500 font-bold mb-2">
+            Unités de mesure
+          </label>
+          <div className="flex flex-col gap-1.5">
+            {units.map((u) => (
+              <div
+                key={u.id}
+                className="flex items-center justify-between bg-zinc-pale border border-black/10 px-3 py-2"
+              >
+                <span className="text-sm">{u.label}</span>
+                {pendingUnit === u.id ? (
+                  <div className="flex items-center gap-2 text-xs">
+                    <button
+                      onClick={() => {
+                        onDeleteUnit(u.id);
+                        setPendingUnit(null);
+                      }}
+                      className="bg-rouge-non text-white px-2.5 py-1 uppercase"
+                    >
+                      Confirmer
+                    </button>
+                    <button
+                      onClick={() => setPendingUnit(null)}
+                      className="border border-black/10 px-2.5 py-1 uppercase"
+                    >
+                      Annuler
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setPendingUnit(u.id)}
+                    className="text-xs uppercase text-rouge-non"
+                  >
+                    Supprimer
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>
