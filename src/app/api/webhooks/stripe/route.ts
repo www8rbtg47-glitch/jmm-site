@@ -81,19 +81,22 @@ export async function POST(req: NextRequest) {
 
     const orderId = newId("ord_");
     await tx.execute({
-      sql: `INSERT INTO orders (id, payment_method, status, total) VALUES (?, 'en_ligne', 'payee', ?)`,
+      sql: `INSERT INTO orders (id, payment_method, status, total, confirmed_at) VALUES (?, 'en_ligne', 'confirmee', ?, datetime('now'))`,
       args: [orderId, total],
     });
 
     for (const item of items) {
       await tx.execute({
-        sql: `INSERT INTO order_items (id, order_id, product_name, color_name, length, quantity, price_per_unit)
-              VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        sql: `INSERT INTO order_items (id, order_id, product_id, product_name, color_id, color_name, length_option_id, length_value, quantity, price_per_unit)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         args: [
           newId("item_"),
           orderId,
+          item.productId,
           item.productName,
+          item.colorId,
           item.colorName,
+          item.lengthOptionId,
           item.length,
           item.quantity,
           item.pricePerUnit,

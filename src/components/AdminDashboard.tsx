@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ProductDTO, CategoryDTO, UnitDTO } from "@/lib/types";
 import { getStockFor, getTotalStock } from "@/lib/stock";
@@ -35,6 +35,16 @@ export default function AdminDashboard({
   const [units, setUnits] = useState<UnitDTO[]>(initialUnits);
   const [toast, setToast] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
+  const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
+
+  useEffect(() => {
+    fetch("/api/admin/orders")
+      .then((res) => (res.ok ? res.json() : []))
+      .then((orders: { status: string }[]) => {
+        setPendingOrdersCount(orders.filter((o) => o.status === "en_attente").length);
+      })
+      .catch(() => {});
+  }, []);
 
   function showToast(msg: string) {
     setToast(msg);
@@ -399,7 +409,20 @@ export default function AdminDashboard({
   return (
     <div className="min-h-screen bg-zinc-pale font-sans text-charbon">
       <header className="bg-charbon text-white px-7 py-4 flex items-center justify-between border-b-[3px] border-vert-accent">
-        <h2 className="font-display uppercase text-lg">Gestion du stock — JMM</h2>
+        <div className="flex items-center gap-4">
+          <h2 className="font-display uppercase text-lg">Gestion du stock — JMM</h2>
+          <a
+            href="/admin/orders"
+            className="relative border border-zinc px-3 py-2 text-xs uppercase hover:bg-charbon-clair transition"
+          >
+            Commandes
+            {pendingOrdersCount > 0 && (
+              <span className="absolute -top-2 -right-2 bg-vert-accent text-charbon text-[10px] font-bold w-[18px] h-[18px] rounded-full flex items-center justify-center">
+                {pendingOrdersCount}
+              </span>
+            )}
+          </a>
+        </div>
         <div className="flex items-center gap-4">
           <span className="text-xs text-zinc">Connecté: {adminUsername}</span>
           <button

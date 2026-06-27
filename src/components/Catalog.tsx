@@ -28,6 +28,9 @@ export default function Catalog({ initialProducts, initialCategories }: Props) {
   const [toast, setToast] = useState<string | null>(null);
   const [checkingOut, setCheckingOut] = useState(false);
   const [orderError, setOrderError] = useState<string | null>(null);
+  const [customerName, setCustomerName] = useState("");
+  const [customerEmail, setCustomerEmail] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
 
   function showToast(msg: string) {
     setToast(msg);
@@ -97,13 +100,23 @@ export default function Catalog({ initialProducts, initialCategories }: Props) {
 
   async function checkoutDelivery() {
     if (cart.length === 0) return;
+    if (!customerName.trim() || !customerEmail.trim() || !customerPhone.trim()) {
+      setOrderError("Ton nom, ton courriel et ton téléphone sont requis pour passer la commande.");
+      return;
+    }
     setCheckingOut(true);
     setOrderError(null);
     try {
       const res = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items: cart, paymentMethod: "livraison" }),
+        body: JSON.stringify({
+          items: cart,
+          paymentMethod: "livraison",
+          customerName: customerName.trim(),
+          customerEmail: customerEmail.trim(),
+          customerPhone: customerPhone.trim(),
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -112,7 +125,10 @@ export default function Catalog({ initialProducts, initialCategories }: Props) {
       }
       setCart([]);
       setCartOpen(false);
-      showToast("Commande confirmée — à payer à la livraison");
+      setCustomerName("");
+      setCustomerEmail("");
+      setCustomerPhone("");
+      showToast("Commande envoyée — en attente de confirmation");
     } catch {
       setOrderError("Impossible de joindre le serveur. Réessaie.");
     } finally {
@@ -309,6 +325,34 @@ export default function Catalog({ initialProducts, initialCategories }: Props) {
             <span>Total</span>
             <span>{formatMoney(cartTotal)}</span>
           </div>
+
+          <div className="flex flex-col gap-2 mb-3">
+            <p className="text-[11px] uppercase tracking-wide text-gray-500 font-bold">
+              Tes coordonnées (requises pour le paiement à la livraison)
+            </p>
+            <input
+              type="text"
+              placeholder="Nom complet"
+              value={customerName}
+              onChange={(e) => setCustomerName(e.target.value)}
+              className="w-full border border-black/15 px-3 py-2 text-sm"
+            />
+            <input
+              type="email"
+              placeholder="Courriel"
+              value={customerEmail}
+              onChange={(e) => setCustomerEmail(e.target.value)}
+              className="w-full border border-black/15 px-3 py-2 text-sm"
+            />
+            <input
+              type="tel"
+              placeholder="Téléphone"
+              value={customerPhone}
+              onChange={(e) => setCustomerPhone(e.target.value)}
+              className="w-full border border-black/15 px-3 py-2 text-sm"
+            />
+          </div>
+
           {orderError && (
             <p className="text-xs text-rouge-non mb-2">{orderError}</p>
           )}
@@ -325,7 +369,7 @@ export default function Catalog({ initialProducts, initialCategories }: Props) {
               onClick={checkoutDelivery}
               className="w-full border border-charbon py-3 text-sm uppercase tracking-wide disabled:border-gray-300 disabled:text-gray-400 hover:bg-zinc-pale transition"
             >
-              Payer à la livraison
+              {checkingOut ? "Envoi..." : "Payer à la livraison"}
             </button>
           </div>
         </div>

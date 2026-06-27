@@ -43,3 +43,37 @@ export type CartItemDTO = {
   quantity: number;
   pricePerUnit: number;
 };
+
+export type CustomerInfoDTO = {
+  name: string;
+  email: string;
+  phone: string;
+};
+
+export type OrderItemDTO = {
+  id: string;
+  productId: string | null;
+  productName: string;
+  colorId: string | null;
+  colorName: string;
+  lengthOptionId: string | null;
+  length: number;
+  quantity: number;
+  pricePerUnit: number;
+};
+
+export type OrderStatus = "en_attente" | "confirmee" | "refusee";
+
+export type OrderDTO = {
+  id: string;
+  status: OrderStatus;
+  paymentMethod: string;
+  total: number;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  adminNote: string;
+  createdAt: string;
+  confirmedAt: string | null;
+  items: OrderItemDTO[];
+};
