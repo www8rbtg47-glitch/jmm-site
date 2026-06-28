@@ -33,6 +33,11 @@ function itemsToHtmlList(items: { productName: string; colorName: string; length
  * Ne fait rien (silencieusement) si RESEND_API_KEY ou ADMIN_NOTIFICATION_EMAIL
  * ne sont pas configurés — le site doit continuer à fonctionner sans courriels
  * tant que ce n'est pas mis en place.
+ *
+ * IMPORTANT: le SDK Resend ne lance jamais d'exception JavaScript même en cas
+ * d'échec — il retourne toujours { data, error }. On doit donc vérifier ce
+ * champ explicitement et lancer nous-mêmes une erreur, sinon un échec réel
+ * (domaine non vérifié, clé invalide, etc.) passerait totalement inaperçu.
  */
 export async function sendAdminNewOrderEmail(params: {
   orderId: string;
@@ -48,7 +53,7 @@ export async function sendAdminNewOrderEmail(params: {
 
   const fromAddress = process.env.EMAIL_FROM_ADDRESS || "JMM <onboarding@resend.dev>";
 
-  await resend.emails.send({
+  const result = await resend.emails.send({
     from: fromAddress,
     to: adminEmail,
     subject: `Nouvelle commande à confirmer — ${params.customerName}`,
@@ -63,6 +68,12 @@ export async function sendAdminNewOrderEmail(params: {
       <p>Connecte-toi au panneau admin pour ajuster et confirmer cette commande.</p>
     `,
   });
+
+  if (result.error) {
+    throw new Error(
+      `Resend a refusé l'envoi du courriel admin: ${result.error.message} (${result.error.name})`
+    );
+  }
 }
 
 /**
@@ -80,12 +91,18 @@ export async function sendCustomerOrderEmail(params: {
 
   const fromAddress = process.env.EMAIL_FROM_ADDRESS || "JMM <onboarding@resend.dev>";
 
-  await resend.emails.send({
+  const result = await resend.emails.send({
     from: fromAddress,
     to: params.customerEmail,
     subject: params.subject,
     html: params.message.replace(/\n/g, "<br>"),
   });
+
+  if (result.error) {
+    throw new Error(
+      `Resend a refusé l'envoi du courriel au client: ${result.error.message} (${result.error.name})`
+    );
+  }
 
   return { sent: true };
 }

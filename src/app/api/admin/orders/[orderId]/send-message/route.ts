@@ -48,7 +48,17 @@ export async function POST(
     );
   }
 
-  await sendCustomerOrderEmail({ customerEmail, customerName, subject, message });
+  try {
+    await sendCustomerOrderEmail({ customerEmail, customerName, subject, message });
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : "Erreur inconnue.";
+    return NextResponse.json(
+      {
+        error: `L'envoi a échoué (${detail}). Copie le message ci-dessus et envoie-le toi-même par courriel ou texto pour l'instant.`,
+      },
+      { status: 502 }
+    );
+  }
 
   return NextResponse.json({ success: true });
 }

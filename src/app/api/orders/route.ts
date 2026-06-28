@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { after } from "next/server";
 import { ensureSchema, getDb, newId } from "@/lib/db";
 import { CartItemDTO } from "@/lib/types";
 
@@ -89,30 +90,24 @@ export async function POST(req: NextRequest) {
   }
 
   // Avertir l'administrateur par courriel qu'une nouvelle commande attend une confirmation.
-  // On n'attend pas la fin de l'envoi (et une erreur d'envoi ne doit jamais faire échouer
-  // la commande elle-même — le client doit toujours voir sa commande enregistrée).
-  notifyAdminOfNewOrder({
-    orderId,
-    customerName,
-    customerEmail,
-    customerPhone,
-    total: roundedTotal,
-    items,
-  }).catch((err) => {
-    console.error("Erreur lors de l'envoi du courriel de nouvelle commande:", err);
+  // On utilise after() pour que cet envoi s'exécute après que la réponse soit envoyée
+  // au client, mais sans risquer que la plateforme d'hébergement coupe l'exécution
+  // avant la fin (ce qui arriverait avec un simple appel "sans attendre").
+  after(async () => {
+    try {
+      const { sendAdminNewOrderEmail } = await import("@/lib/email");
+      await sendAdminNewOrderEmail({
+        orderId,
+        customerName,
+        customerEmail,
+        customerPhone,
+        total: roundedTotal,
+        items,
+      });
+    } catch (err) {
+      console.error("Erreur lors de l'envoi du courriel de nouvelle commande:", err);
+    }
   });
 
   return NextResponse.json({ success: true, orderId });
-}
-
-async function notifyAdminOfNewOrder(params: {
-  orderId: string;
-  customerName: string;
-  customerEmail: string;
-  customerPhone: string;
-  total: number;
-  items: CartItemDTO[];
-}) {
-  const { sendAdminNewOrderEmail } = await import("@/lib/email");
-  await sendAdminNewOrderEmail(params);
 }
