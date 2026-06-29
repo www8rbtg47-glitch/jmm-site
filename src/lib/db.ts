@@ -67,6 +67,7 @@ CREATE TABLE IF NOT EXISTS orders (
   customer_email TEXT NOT NULL DEFAULT '',
   customer_phone TEXT NOT NULL DEFAULT '',
   admin_note TEXT NOT NULL DEFAULT '',
+  stripe_payment_intent_id TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   confirmed_at TEXT
 );
@@ -121,6 +122,7 @@ const MIGRATIONS = [
   // On retire l'ancienne colonne "length": sa contrainte NOT NULL bloquerait
   // sinon toute nouvelle commande, puisque le code n'y écrit plus du tout.
   "ALTER TABLE order_items DROP COLUMN length",
+  "ALTER TABLE orders ADD COLUMN stripe_payment_intent_id TEXT",
 ];
 
 export async function ensureSchema() {

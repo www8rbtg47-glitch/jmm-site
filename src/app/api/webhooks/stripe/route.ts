@@ -4,9 +4,12 @@ import { getStripe } from "@/lib/stripe";
 import { CartItemDTO } from "@/lib/types";
 import Stripe from "stripe";
 
-// POST /api/webhooks/stripe — appelé par Stripe quand un paiement est confirmé.
-// C'est ICI (et seulement ici) que le stock est déduit pour un paiement en ligne,
-// pour être certain que l'argent a vraiment été reçu avant de retirer le stock.
+// POST /api/webhooks/stripe — appelé par Stripe quand le client a autorisé son
+// paiement (capture_method: manual, donc l'argent n'est pas encore prélevé).
+// On crée ici une commande "en_attente", exactement comme pour le paiement à la
+// livraison: l'admin doit l'ajuster et la confirmer dans /admin/orders. Ce n'est
+// QUE lors de cette confirmation que le paiement est réellement capturé et que
+// le stock est déduit — jamais ici.
 export async function POST(req: NextRequest) {
   const stripe = getStripe();
   if (!stripe) {
@@ -41,6 +44,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ received: true });
   }
 
+  const paymentIntentId =
+    typeof session.payment_intent === "string"
+      ? session.payment_intent
+      : session.payment_intent?.id;
+
   await ensureSchema();
   const db = getDb();
 
@@ -56,37 +64,21 @@ export async function POST(req: NextRequest) {
 
   const items: CartItemDTO[] = JSON.parse(pending.items_json as string);
   const total = pending.total as number;
+  const customerEmail = session.customer_details?.email || "";
+  const customerName = session.customer_details?.name || "";
+  const customerPhone = session.customer_details?.phone || "";
 
-  const tx = await db.transaction("write");
   try {
-    for (const item of items) {
-      const res = await tx.execute({
-        sql: `SELECT quantity FROM stock WHERE color_id = ? AND length_option_id = ?`,
-        args: [item.colorId, item.lengthOptionId],
-      });
-      const available = (res.rows[0]?.quantity as number) ?? 0;
-      if (available < item.quantity) {
-        throw new Error(
-          `Stock insuffisant pour "${item.productName}" au moment de confirmer le paiement.`
-        );
-      }
-    }
-
-    for (const item of items) {
-      await tx.execute({
-        sql: `UPDATE stock SET quantity = quantity - ? WHERE color_id = ? AND length_option_id = ?`,
-        args: [item.quantity, item.colorId, item.lengthOptionId],
-      });
-    }
-
     const orderId = newId("ord_");
-    await tx.execute({
-      sql: `INSERT INTO orders (id, payment_method, status, total, confirmed_at) VALUES (?, 'en_ligne', 'confirmee', ?, datetime('now'))`,
-      args: [orderId, total],
+    await db.execute({
+      sql: `INSERT INTO orders
+            (id, payment_method, status, total, customer_name, customer_email, customer_phone, stripe_payment_intent_id)
+            VALUES (?, 'en_ligne', 'en_attente', ?, ?, ?, ?, ?)`,
+      args: [orderId, total, customerName, customerEmail, customerPhone, paymentIntentId ?? null],
     });
 
     for (const item of items) {
-      await tx.execute({
+      await db.execute({
         sql: `INSERT INTO order_items (id, order_id, product_id, product_name, color_id, color_name, length_option_id, length_value, quantity, price_per_unit)
               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         args: [
@@ -104,19 +96,27 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    await tx.execute({
+    await db.execute({
       sql: `UPDATE pending_checkouts SET status = 'complete' WHERE id = ?`,
       args: [pendingCheckoutId],
     });
 
-    await tx.commit();
+    // Avertir l'administrateur, comme pour une commande à la livraison.
+    try {
+      const { sendAdminNewOrderEmail } = await import("@/lib/email");
+      await sendAdminNewOrderEmail({
+        orderId,
+        customerName,
+        customerEmail,
+        customerPhone,
+        total,
+        items,
+      });
+    } catch (err) {
+      console.error("Erreur lors de l'envoi du courriel de nouvelle commande (Stripe):", err);
+    }
   } catch (err) {
-    await tx.rollback();
-    await db.execute({
-      sql: `UPDATE pending_checkouts SET status = 'erreur_stock' WHERE id = ?`,
-      args: [pendingCheckoutId],
-    });
-    console.error("Erreur lors de la confirmation de commande Stripe:", err);
+    console.error("Erreur lors de l'enregistrement de la commande Stripe:", err);
   }
 
   return NextResponse.json({ received: true });
